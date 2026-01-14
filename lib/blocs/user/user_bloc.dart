@@ -96,8 +96,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
-  User _mapFirebaseUserToUser(firebase_auth.User firebaseUser) {
-    return User(
+  UserModel _mapFirebaseUserToUser(firebase_auth.User firebaseUser) {
+    return UserModel(
       username: firebaseUser.displayName ?? 'User',
       fullName: firebaseUser.displayName ?? 'Unknown User',
       email: firebaseUser.email ?? '',

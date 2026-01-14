@@ -11,7 +11,7 @@ final class UserLoading extends UserState {}
 
 // User is authenticated
 final class UserAuthenticated extends UserState {
-  final User user;
+  final UserModel user;
   final firebase_auth.User firebaseUser;
 
   UserAuthenticated(this.user, this.firebaseUser);

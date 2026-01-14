@@ -16,8 +16,12 @@ class InnerVoiceApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => UserBloc()..add(CheckAuthStatus()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<UserBloc>(
+          create: (context) => UserBloc()..add(CheckAuthStatus()),
+        ),
+      ],
       child: MaterialApp(
         title: 'Inner Voices',
         theme: ThemeData(

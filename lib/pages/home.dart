@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:innervoices/blocs/user/user_bloc.dart';
 import 'package:innervoices/components/appbar.dart';
+import 'package:innervoices/components/drawer.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -18,6 +19,7 @@ class HomePage extends StatelessWidget {
       },
       child: Scaffold(
         appBar: BrandAppbar(title: 'Inner Voices'),
+        drawer: BradDrawer(),
         body: BlocBuilder<UserBloc, UserState>(
           builder: (context, state) {
             if (state is UserAuthenticated) {
@@ -32,39 +34,11 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildUserContent(BuildContext context, UserAuthenticated state) {
-    final user = state.user;
-    final isLoading = context.watch<UserBloc>().state is UserLoading;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 40),
-
-          // User Profile Section
-          CircleAvatar(
-            radius: 50,
-            backgroundImage: user.profilePictureUrl.isNotEmpty
-                ? NetworkImage(user.profilePictureUrl)
-                : null,
-            child: user.profilePictureUrl.isEmpty
-                ? const Icon(Icons.person, size: 50)
-                : null,
-          ),
-          const SizedBox(height: 20),
-
-          Text(
-            'Welcome, ${user.fullName}!',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-
-          Text(
-            user.email,
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
-          ),
           const SizedBox(height: 40),
 
           // App Content Area
@@ -105,32 +79,6 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 40),
-
-          // Sign Out Button
-          ElevatedButton.icon(
-            onPressed: isLoading
-                ? null
-                : () => context.read<UserBloc>().add(SignOutRequested()),
-            icon: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                    ),
-                  )
-                : const Icon(Icons.logout),
-            label: Text(isLoading ? 'Signing Out...' : 'Sign Out'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[50],
-              foregroundColor: Colors.red,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
         ],
       ),
     );

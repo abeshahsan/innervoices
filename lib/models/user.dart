@@ -1,24 +1,24 @@
 import 'dart:convert';
 
-class User {
+class UserModel {
   String username;
   String fullName;
   String email;
   String profilePictureUrl;
-  User({
+  UserModel({
     required this.username,
     required this.fullName,
     required this.email,
     required this.profilePictureUrl,
   });
 
-  User copyWith({
+  UserModel copyWith({
     String? username,
     String? fullName,
     String? email,
     String? profilePictureUrl,
   }) {
-    return User(
+    return UserModel(
       username: username ?? this.username,
       fullName: fullName ?? this.fullName,
       email: email ?? this.email,
@@ -35,8 +35,8 @@ class User {
     };
   }
 
-  factory User.fromMap(Map<String, dynamic> map) {
-    return User(
+  factory UserModel.fromMap(Map<String, dynamic> map) {
+    return UserModel(
       username: map['username'] as String,
       fullName: map['fullName'] as String,
       email: map['email'] as String,
@@ -46,8 +46,8 @@ class User {
 
   String toJson() => json.encode(toMap());
 
-  factory User.fromJson(String source) =>
-      User.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory UserModel.fromJson(String source) =>
+      UserModel.fromMap(json.decode(source) as Map<String, dynamic>);
 
   @override
   String toString() {
@@ -55,7 +55,7 @@ class User {
   }
 
   @override
-  bool operator ==(covariant User other) {
+  bool operator ==(covariant UserModel other) {
     if (identical(this, other)) return true;
 
     return other.username == username &&
