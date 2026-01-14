@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:innervoices/components/appbar.dart';
-import 'package:innervoices/blocs/user/user_bloc.dart';
+import 'package:innervoices/presentation/widgets/appbar.dart';
+import 'package:innervoices/bloc/user/user_bloc.dart';
 
 class SignInPage extends StatelessWidget {
   const SignInPage({super.key});
@@ -17,7 +17,7 @@ class SignInPage extends StatelessWidget {
         }
       },
       child: Scaffold(
-        appBar: BrandAppbar(title: 'Inner Voices'),
+        appBar: HomeAppbar(title: 'Inner Voices'),
         body: BlocBuilder<UserBloc, UserState>(
           builder: (context, state) {
             final isLoading = state is UserLoading;

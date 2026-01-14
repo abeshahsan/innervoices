@@ -3,16 +3,16 @@ import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:innervoices/models/user.dart';
-import 'package:innervoices/services/google_auth.dart';
+import 'package:innervoices/data/repositories/auth_repository.dart';
 
 part 'user_event.dart';
 part 'user_state.dart';
 
 class UserBloc extends Bloc<UserEvent, UserState> {
-  final GoogleAuthService _authService = GoogleAuthService();
+  final AuthRepository _authRepository;
   StreamSubscription<firebase_auth.User?>? _authSubscription;
 
-  UserBloc() : super(UserInitial()) {
+  UserBloc(this._authRepository) : super(UserInitial()) {
     // Check auth status on app start
     on<CheckAuthStatus>(_onCheckAuthStatus);
 
@@ -26,7 +26,9 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     on<UserUpdated>(_onUserUpdated);
 
     // Listen to auth state changes
-    _authSubscription = _authService.authStateChanges.listen((firebaseUser) {
+    _authSubscription = _authRepository.authStateChanges().listen((
+      firebaseUser,
+    ) {
       add(UserUpdated(firebaseUser));
     });
   }
@@ -38,8 +40,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     emit(UserLoading());
 
     try {
-      await _authService.initialize();
-      final currentUser = _authService.currentUser;
+      await _authRepository.initialize();
+      final currentUser = _authRepository.currentUser;
 
       if (currentUser != null) {
         final user = _mapFirebaseUserToUser(currentUser);
@@ -59,7 +61,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     emit(UserLoading());
 
     try {
-      final userCredential = await _authService.signInWithGoogle();
+      final userCredential = await _authRepository.signInWithGoogle();
 
       if (userCredential?.user != null) {
         final user = _mapFirebaseUserToUser(userCredential!.user!);
@@ -80,7 +82,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     emit(UserLoading());
 
     try {
-      await _authService.signOut();
+      await _authRepository.signOut();
       emit(UserUnauthenticated());
     } catch (e) {
       emit(UserError('Sign out failed: $e'));

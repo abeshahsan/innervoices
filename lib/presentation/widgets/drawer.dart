@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:innervoices/blocs/user/user_bloc.dart';
+import 'package:innervoices/bloc/user/user_bloc.dart';
 import 'package:innervoices/models/user.dart';
 
-class BradDrawer extends StatefulWidget {
-  const BradDrawer({super.key});
+class HomeDrawer extends StatefulWidget {
+  const HomeDrawer({super.key});
 
   @override
-  State<BradDrawer> createState() => _BradDrawerState();
+  State<HomeDrawer> createState() => _HomeDrawerState();
 }
 
-class _BradDrawerState extends State<BradDrawer> {
+class _HomeDrawerState extends State<HomeDrawer> {
   bool _showDetails = false;
 
   @override

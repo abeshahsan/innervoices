@@ -1,25 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:innervoices/blocs/user/user_bloc.dart';
-import 'package:innervoices/pages/sign_in.dart';
-import 'package:innervoices/pages/home.dart';
+import 'package:innervoices/bloc/user/user_bloc.dart';
+import 'package:innervoices/data/repositories/auth_repository_impl.dart';
+import 'package:innervoices/data/services/google_auth_service.dart';
+import 'package:innervoices/presentation/screens/sign_in.dart';
+import 'package:innervoices/presentation/screens/home.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(const InnerVoiceApp());
+  runApp(const InnerVoicesApp());
 }
 
-class InnerVoiceApp extends StatelessWidget {
-  const InnerVoiceApp({super.key});
+class InnerVoicesApp extends StatelessWidget {
+  const InnerVoicesApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    /* Initialize repositories */
+    final googleAuthService = GoogleAuthService();
+    final authRepository = AuthRepositoryImpl(googleAuthService);
+    /* End initialization */
+
     return MultiBlocProvider(
       providers: [
         BlocProvider<UserBloc>(
-          create: (context) => UserBloc()..add(CheckAuthStatus()),
+          create: (context) => UserBloc(authRepository)..add(CheckAuthStatus()),
         ),
       ],
       child: MaterialApp(

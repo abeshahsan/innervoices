@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class BrandAppbar extends StatelessWidget implements PreferredSizeWidget {
+class HomeAppbar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
 
-  const BrandAppbar({super.key, required this.title, this.actions});
+  const HomeAppbar({super.key, required this.title, this.actions});
 
   @override
   Widget build(BuildContext context) {
