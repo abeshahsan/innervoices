@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:innervoices/bloc/note/note_bloc.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
 import 'package:innervoices/presentation/widgets/appbar.dart';
 import 'package:innervoices/presentation/widgets/drawer.dart';
@@ -20,66 +21,29 @@ class HomePage extends StatelessWidget {
       child: Scaffold(
         appBar: HomeAppbar(title: 'Inner Voices'),
         drawer: HomeDrawer(),
-        body: BlocBuilder<UserBloc, UserState>(
+        body: BlocBuilder<NoteBloc, NoteState>(
           builder: (context, state) {
-            if (state is UserAuthenticated) {
-              return _buildUserContent(context, state);
+            if (state is NoteLoading) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (state is NoteLoaded) {
+              final notes = state.notes;
+              return ListView.builder(
+                itemCount: notes.length,
+                itemBuilder: (context, index) {
+                  final note = notes[index];
+                  return ListTile(
+                    title: Text(note.title),
+                    subtitle: Text(note.content),
+                  );
+                },
+              );
+            } else if (state is NoteError) {
+              return Center(child: Text(state.message));
+            } else {
+              return const Center(child: Text('No notes available.'));
             }
-
-            return const Center(child: CircularProgressIndicator());
           },
         ),
-      ),
-    );
-  }
-
-  Widget _buildUserContent(BuildContext context, UserAuthenticated state) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 40),
-
-          // App Content Area
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.psychology,
-                    size: 60,
-                    color: Colors.deepPurple,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Inner Voices',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Your personal space for thoughts and reflections',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Coming soon...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
-        ],
       ),
     );
   }
