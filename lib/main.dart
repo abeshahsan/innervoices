@@ -4,16 +4,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:innervoices/bloc/note/note_bloc.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
 import 'package:innervoices/data/repositories/auth_repository_impl.dart';
-import 'package:innervoices/data/repositories/note_repository.dart';
-import 'package:innervoices/data/repositories/note_repository_impl.dart';
+import 'package:innervoices/data/repositories/note_repository_realm.dart';
 import 'package:innervoices/data/services/google_auth_service.dart';
-import 'package:innervoices/data/services/note_firestore_service.dart';
+import 'package:innervoices/data/services/note_realm_service.dart';
+import 'package:innervoices/data/services/realm_manager.dart';
 import 'package:innervoices/presentation/screens/home.dart';
 import 'package:innervoices/presentation/screens/sign_in.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Initialize Realm singleton
+  RealmManager.instance.initialize();
+
   runApp(const InnerVoicesApp());
 }
 
@@ -22,41 +26,37 @@ class InnerVoicesApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    /***** Initialize services *****/
-
+    /***** Initialize services using shared Realm instance *****/
     final googleAuthService = GoogleAuthService();
-    final NoteFirestoreService noteFirestoreService = NoteFirestoreService();
+    final noteRealmService = NoteRealmService(RealmManager.instance.realm);
     /***** End services initialization *****/
 
     /***** Initialize repositories *****/
     final authRepository = AuthRepositoryImpl(googleAuthService);
 
-    final NoteRepository noteRepository = NoteRepositoryImpl(
-      firestoreService: noteFirestoreService,
+    final noteRepository = NoteRepositoryRealm(
+      noteRealmService: noteRealmService,
     );
     /***** End repositories initialization *****/
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<UserBloc>(
-          create: (context) => UserBloc(authRepository)..add(CheckAuthStatus()),
-        ),
-        BlocProvider<NoteBloc>(create: (context) => NoteBloc(noteRepository)..add(LoadNotes())),
-      ],
+    return BlocProvider<UserBloc>(
+      create: (context) => UserBloc(authRepository)..add(CheckAuthStatus()),
       child: MaterialApp(
         title: 'Inner Voices',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: const AuthGate(),
+        home: AuthGate(noteRepository: noteRepository),
       ),
     );
   }
 }
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
+  final NoteRepositoryRealm noteRepository;
+
+  const AuthGate({super.key, required this.noteRepository});
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +67,13 @@ class AuthGate extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         } else if (state is UserAuthenticated) {
-          return const HomePage();
+          // Create NoteBloc with authenticated user's ID
+          return BlocProvider<NoteBloc>(
+            create: (context) =>
+                NoteBloc(noteRepository, state.firebaseUser.uid)
+                  ..add(LoadNotes()),
+            child: const HomePage(),
+          );
         } else {
           return const SignInPage();
         }

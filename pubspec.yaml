@@ -41,6 +41,9 @@ dependencies:
   bloc: ^9.2.0
   flutter_bloc: ^9.1.1
   meta: ^1.17.0
+  realm: ^20.2.0
+  intl: ^0.19.0
+  
 
 dev_dependencies:
   flutter_test:
@@ -52,6 +55,11 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  realm_common: ^20.2.0
+  # analyzer: ^10.0.0
+
+# dependency_overrides:
+  # analyzer: ^10.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

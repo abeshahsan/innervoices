@@ -2,9 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:innervoices/models/note.dart';
 
 class NoteFirestoreService {
-  NoteFirestoreService ();
-
-  Future<List<Note>> fetchAllNotes(String userId) async {
+  Future<List<Note>> fetchAllNotesForUser(String userId) async {
     // for now some mock data
     debugPrint('Fetching notes for user: $userId');
     return Future.delayed(const Duration(seconds: 1), () {
