@@ -8,8 +8,8 @@ import 'package:innervoices/data/repositories/note_repository_realm.dart';
 import 'package:innervoices/data/services/google_auth_service.dart';
 import 'package:innervoices/data/services/note_realm_service.dart';
 import 'package:innervoices/data/services/realm_manager.dart';
-import 'package:innervoices/presentation/screens/home.dart';
-import 'package:innervoices/presentation/screens/sign_in.dart';
+import 'package:innervoices/ui/screens/home.dart';
+import 'package:innervoices/ui/screens/sign_in.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,24 +39,31 @@ class InnerVoicesApp extends StatelessWidget {
     );
     /***** End repositories initialization *****/
 
-    return BlocProvider<UserBloc>(
-      create: (context) => UserBloc(authRepository)..add(CheckAuthStatus()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<UserBloc>(
+          create: (context) => UserBloc(authRepository)..add(CheckAuthStatus()),
+        ),
+        BlocProvider<NoteBloc>(
+          create: (context) => NoteBloc(noteRepository, '')..add(LoadNotes()),
+        ),
+      ],
       child: MaterialApp(
         title: 'Inner Voices',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: AuthGate(noteRepository: noteRepository),
+        home: AuthGate(),
       ),
     );
   }
 }
 
 class AuthGate extends StatelessWidget {
-  final NoteRepositoryRealm noteRepository;
+  // final NoteRepositoryRealm noteRepository;
 
-  const AuthGate({super.key, required this.noteRepository});
+  const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -67,13 +74,7 @@ class AuthGate extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         } else if (state is UserAuthenticated) {
-          // Create NoteBloc with authenticated user's ID
-          return BlocProvider<NoteBloc>(
-            create: (context) =>
-                NoteBloc(noteRepository, state.firebaseUser.uid)
-                  ..add(LoadNotes()),
-            child: const HomePage(),
-          );
+          return HomePage();
         } else {
           return const SignInPage();
         }

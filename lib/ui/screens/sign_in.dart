@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:innervoices/presentation/widgets/appbar.dart';
+import 'package:innervoices/ui/widgets/appbar.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
 
 class SignInPage extends StatelessWidget {

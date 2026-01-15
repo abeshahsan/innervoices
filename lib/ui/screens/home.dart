@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:innervoices/bloc/note/note_bloc.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
-import 'package:innervoices/data/services/sample_data_helper.dart';
 import 'package:innervoices/models/note.dart';
-import 'package:innervoices/presentation/widgets/appbar.dart';
-import 'package:innervoices/presentation/widgets/drawer.dart';
+import 'package:innervoices/ui/screens/note_editor.dart';
+import 'package:innervoices/ui/widgets/appbar.dart';
+import 'package:innervoices/ui/widgets/drawer.dart';
 import 'package:intl/intl.dart';
 
 class HomePage extends StatelessWidget {
@@ -89,9 +89,8 @@ class HomePage extends StatelessWidget {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            // TODO: Navigate to add note screen
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Add note feature coming soon!')),
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const NoteEditorScreen()),
             );
           },
           child: const Icon(Icons.add),
@@ -118,58 +117,11 @@ class HomePage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Start capturing your thoughts and ideas',
+              'Tap the + button to create your first note',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: Colors.grey[500]),
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () async {
-                final noteBloc = context.read<NoteBloc>();
-
-                // Show loading indicator
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Adding sample notes...')),
-                );
-
-                try {
-                  await SampleDataHelper.insertSampleNotes(
-                    noteBloc.noteRepository,
-                    noteBloc.userId,
-                  );
-                  noteBloc.add(LoadNotes());
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Sample notes added successfully!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              icon: const Icon(Icons.add_box_outlined),
-              label: const Text('Add Sample Notes'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
             ),
           ],
         ),
@@ -182,10 +134,11 @@ class HomePage extends StatelessWidget {
       elevation: 2,
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to note detail/edit screen
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Tapped on: ${note.title}')));
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => NoteEditorScreen(note: note),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
