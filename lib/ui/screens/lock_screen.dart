@@ -1,38 +1,92 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app_lock/flutter_app_lock.dart';
-import 'package:flutter_screen_lock/flutter_screen_lock.dart';
-import 'package:local_auth/local_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:innervoices/bloc/applock/applock_bloc.dart';
 
-class LockScreen extends StatelessWidget {
+class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    Future<void> localAuth(BuildContext context) async {
-      final localAuth = LocalAuthentication();
+  State<LockScreen> createState() => _LockScreenState();
+}
 
-      try {
-        final didAuthenticate = await localAuth.authenticate(
-          localizedReason: 'Please authenticate',
-        );
-
-        if (didAuthenticate && context.mounted) {
-          AppLock.of(context)!.didUnlock();
-        }
-      } catch (e) {
-        debugPrint('Error using local authentication: $e');
+class _LockScreenState extends State<LockScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Dispatch the initial event after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ApplockBloc>().add(ApplockInitialEvent(context));
       }
-    }
+    });
+  }
 
-    return ScreenLock(
-      correctString: '1234', // Replace with your desired PIN
-      title: const Text('Enter PIN to unlock', style: TextStyle(fontSize: 24)),
-      customizedButtonChild: const Icon(Icons.fingerprint, size: 42),
-      customizedButtonTap: () => localAuth(context),
-      onOpened: () => localAuth(context),
-      onUnlocked: () {
-        AppLock.of(context)!.didUnlock();
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ApplockBloc, ApplockState>(
+      builder: (context, state) {
+        if (state is ApplockShowingWelcome) {
+          return _buildWelcomeScreen();
+        }
+        return _buildLoadingScreen();
       },
+    );
+  }
+
+  Widget _buildWelcomeScreen() {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_outline, size: 100, color: Colors.white),
+                const SizedBox(height: 32),
+                Text(
+                  'Welcome to Inner Voices',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'To keep your thoughts secure,\nplease set up a PIN',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 48),
+                const CircularProgressIndicator(color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
 import 'package:innervoices/models/user.dart';
+import 'package:innervoices/ui/screens/settings.dart';
 
 class HomeDrawer extends StatefulWidget {
   const HomeDrawer({super.key});
@@ -113,6 +114,10 @@ class _HomeDrawerState extends State<HomeDrawer> {
           title: const Text('Settings'),
           onTap: () {
             Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const Settings()),
+            );
           },
         ),
       ],

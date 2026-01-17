@@ -2,23 +2,28 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_lock/flutter_app_lock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:innervoices/bloc/applock/applock_bloc.dart';
 import 'package:innervoices/bloc/note/note_bloc.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
 import 'package:innervoices/data/repositories/auth_repository_impl.dart';
 import 'package:innervoices/data/repositories/note_repository_realm.dart';
 import 'package:innervoices/data/services/google_auth_service.dart';
 import 'package:innervoices/data/services/note_realm_service.dart';
+import 'package:innervoices/data/services/pin_service.dart';
 import 'package:innervoices/data/services/realm_manager.dart';
-import 'package:innervoices/ui/screens/home.dart';
 import 'package:innervoices/ui/screens/lock_screen.dart';
-import 'package:innervoices/ui/screens/sign_in.dart';
+import 'package:innervoices/ui/widgets/auth_gate.dart';
 
 void main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
   // Initialize Realm singleton
   RealmManager.instance.initialize();
+
+  PinService _pinService = PinService();
+  await _pinService.clearPin(); // Ensure PIN is cleared for first-time setup
 
   runApp(const InnerVoicesApp());
 }
@@ -49,6 +54,7 @@ class InnerVoicesApp extends StatelessWidget {
         BlocProvider<NoteBloc>(
           create: (context) => NoteBloc(noteRepository, '')..add(LoadNotes()),
         ),
+        BlocProvider<ApplockBloc>(create: (context) => ApplockBloc()),
       ],
       child: MaterialApp(
         title: 'Inner Voices',
@@ -59,32 +65,22 @@ class InnerVoicesApp extends StatelessWidget {
         home: AuthGate(),
         builder: (context, child) => AppLock(
           builder: (context, arg) => child!,
-          lockScreenBuilder: (context) => LockScreen(),
+          lockScreenBuilder: (context) {
+            return BlocConsumer<ApplockBloc, ApplockState>(
+              listener: (context, state) {
+                if (state is ApplockUnlocked) {
+                  AppLock.of(context)?.didUnlock();
+                }
+              },
+              builder: (context, state) {
+                return const LockScreen();
+              },
+            );
+          },
           initiallyEnabled: true,
           initialBackgroundLockLatency: Duration(seconds: 5),
         ),
       ),
-    );
-  }
-}
-
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<UserBloc, UserState>(
-      builder: (context, state) {
-        if (state is UserLoading || state is UserInitial) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        } else if (state is UserAuthenticated) {
-          return HomePage();
-        } else {
-          return const SignInPage();
-        }
-      },
     );
   }
 }
