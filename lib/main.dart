@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app_lock/flutter_app_lock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:innervoices/bloc/note/note_bloc.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
@@ -9,6 +10,7 @@ import 'package:innervoices/data/services/google_auth_service.dart';
 import 'package:innervoices/data/services/note_realm_service.dart';
 import 'package:innervoices/data/services/realm_manager.dart';
 import 'package:innervoices/ui/screens/home.dart';
+import 'package:innervoices/ui/screens/lock_screen.dart';
 import 'package:innervoices/ui/screens/sign_in.dart';
 
 void main() async {
@@ -55,14 +57,18 @@ class InnerVoicesApp extends StatelessWidget {
           useMaterial3: true,
         ),
         home: AuthGate(),
+        builder: (context, child) => AppLock(
+          builder: (context, arg) => child!,
+          lockScreenBuilder: (context) => LockScreen(),
+          initiallyEnabled: true,
+          initialBackgroundLockLatency: Duration(seconds: 5),
+        ),
       ),
     );
   }
 }
 
 class AuthGate extends StatelessWidget {
-  // final NoteRepositoryRealm noteRepository;
-
   const AuthGate({super.key});
 
   @override
