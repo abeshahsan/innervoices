@@ -71,7 +71,30 @@ class _LockScreenState extends State<LockScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
-                const CircularProgressIndicator(color: Colors.white),
+                ElevatedButton(
+                  onPressed: () {
+                    context.read<ApplockBloc>().add(
+                      ApplockSetPinEvent(context),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 48,
+                      vertical: 16,
+                    ),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Set Up PIN',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -81,12 +104,6 @@ class _LockScreenState extends State<LockScreen> {
   }
 
   Widget _buildLoadingScreen() {
-    return Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      ),
-    );
+    return Scaffold(backgroundColor: Colors.transparent, body: Container());
   }
 }

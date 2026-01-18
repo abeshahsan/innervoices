@@ -9,21 +9,17 @@ import 'package:innervoices/data/repositories/auth_repository_impl.dart';
 import 'package:innervoices/data/repositories/note_repository_realm.dart';
 import 'package:innervoices/data/services/google_auth_service.dart';
 import 'package:innervoices/data/services/note_realm_service.dart';
-import 'package:innervoices/data/services/pin_service.dart';
 import 'package:innervoices/data/services/realm_manager.dart';
 import 'package:innervoices/ui/screens/lock_screen.dart';
 import 'package:innervoices/ui/widgets/auth_gate.dart';
+import 'package:innervoices/ui/widgets/blur_on_background.dart';
 
 void main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
   // Initialize Realm singleton
   RealmManager.instance.initialize();
-
-  PinService _pinService = PinService();
-  await _pinService.clearPin(); // Ensure PIN is cleared for first-time setup
 
   runApp(const InnerVoicesApp());
 }
@@ -63,22 +59,24 @@ class InnerVoicesApp extends StatelessWidget {
           useMaterial3: true,
         ),
         home: AuthGate(),
-        builder: (context, child) => AppLock(
-          builder: (context, arg) => child!,
-          lockScreenBuilder: (context) {
-            return BlocConsumer<ApplockBloc, ApplockState>(
-              listener: (context, state) {
-                if (state is ApplockUnlocked) {
-                  AppLock.of(context)?.didUnlock();
-                }
-              },
-              builder: (context, state) {
-                return const LockScreen();
-              },
-            );
-          },
-          initiallyEnabled: true,
-          initialBackgroundLockLatency: Duration(seconds: 5),
+        builder: (context, child) => BlurOnBackground(
+          child: AppLock(
+            builder: (context, arg) => child!,
+            lockScreenBuilder: (context) {
+              return BlocConsumer<ApplockBloc, ApplockState>(
+                listener: (context, state) {
+                  if (state is ApplockUnlocked) {
+                    AppLock.of(context)?.didUnlock();
+                  }
+                },
+                builder: (context, state) {
+                  return const LockScreen();
+                },
+              );
+            },
+            initiallyEnabled: true,
+            initialBackgroundLockLatency: Duration(seconds: 20),
+          ),
         ),
       ),
     );

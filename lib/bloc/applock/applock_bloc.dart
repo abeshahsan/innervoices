@@ -53,6 +53,7 @@ class ApplockBloc extends Bloc<ApplockEvent, ApplockState> {
     Emitter<ApplockState> emit,
   ) async {
     bool isPinSet = await _pinService.isPinSet();
+    debugPrint('Is PIN set: $isPinSet');
     // Use addPostFrameCallback to show dialogs after the current frame completes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (event.context.mounted) {
@@ -71,11 +72,6 @@ class ApplockBloc extends Bloc<ApplockEvent, ApplockState> {
     Emitter<ApplockState> emit,
   ) async {
     emit(ApplockShowingWelcome());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (event.context.mounted) {
-        add(ApplockSetPinEvent(event.context));
-      }
-    });
   }
 
   /// Handle lock screen display with PIN verification
@@ -95,10 +91,14 @@ class ApplockBloc extends Bloc<ApplockEvent, ApplockState> {
             add(ApplockUnlockEvent(event.context));
           }
         },
-        customizedButtonChild: const Icon(Icons.fingerprint),
+        customizedButtonChild: const Icon(Icons.fingerprint, size: 40),
         customizedButtonTap: () async {
           await _authenticateWithBiometrics(event.context);
         },
+        onOpened: () async {
+          await _authenticateWithBiometrics(event.context);
+        },
+        canCancel: false,
       );
     }
   }
@@ -123,8 +123,9 @@ class ApplockBloc extends Bloc<ApplockEvent, ApplockState> {
         context: event.context,
         onConfirmed: (newPin) async {
           await _pinService.savePin(newPin);
+          debugPrint('PIN set successfully, new PIN: $newPin');
           if (event.context.mounted) {
-            add(ApplockLockEvent(event.context));
+            add(ApplockUnlockEvent(event.context));
           }
         },
         canCancel: false,
