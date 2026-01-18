@@ -1,0 +1,165 @@
+import 'package:flutter/widgets.dart';
+import 'package:innervoices/data/repositories/backup_repository.dart';
+import 'package:innervoices/data/services/backup_service/backup_encryption_service.dart';
+import 'package:innervoices/data/services/backup_service/google_drive_backup_service.dart';
+import 'package:innervoices/data/services/backup_service/local_backup_service.dart';
+import 'package:innervoices/models/backup_info.dart';
+
+class BackupRepositoryImpl implements BackupRepository {
+  final LocalBackupService localService;
+  final GoogleDriveBackupService cloudService;
+  final BackupEncryptionService encryptionService;
+
+  BackupRepositoryImpl({
+    required this.localService,
+    required this.cloudService,
+    required this.encryptionService,
+  });
+
+  @override
+  Future<void> backupToCloud() async {
+    try {
+      debugPrint('DEBUG: [BackupRepo] Starting backup to cloud...');
+
+      // 1. Export local Realm
+      debugPrint('DEBUG: [BackupRepo] Step 1: Exporting local Realm...');
+      final bytes = await localService.exportLocalRealm();
+      debugPrint(
+        'DEBUG: [BackupRepo] Export successful. Size: ${bytes.length} bytes.',
+      );
+
+      // 2. Encrypt data
+      debugPrint('DEBUG: [BackupRepo] Step 2: Encrypting data...');
+      final encryptedBytes = await encryptionService.encrypt(bytes);
+      debugPrint(
+        'DEBUG: [BackupRepo] Encryption successful. Encrypted size: ${encryptedBytes.length} bytes.',
+      );
+
+      // 3. Get current local version and increment
+      debugPrint('DEBUG: [BackupRepo] Step 3: Getting backup info...');
+      final localInfo = await localService.getLocalBackupInfo();
+      final newInfo = localInfo.increment();
+
+      // 4. Upload to cloud with version info
+      debugPrint('DEBUG: [BackupRepo] Step 4: Uploading to cloud...');
+      await cloudService.uploadToDrive(encryptedBytes, newInfo);
+
+      // 5. Save new version info locally
+      debugPrint('DEBUG: [BackupRepo] Step 5: Saving local backup info...');
+      await localService.saveLocalBackupInfo(newInfo);
+
+      debugPrint(
+        'DEBUG: [BackupRepo] Backup completed successfully. Version: ${newInfo.version}',
+      );
+    } catch (e, stack) {
+      debugPrint('DEBUG: [BackupRepo] Backup operation failed: $e');
+      debugPrint('DEBUG: [BackupRepo] Stack trace: $stack');
+      throw Exception('Backup failed: $e');
+    }
+  }
+
+  @override
+  Future<void> restoreFromCloud() async {
+    try {
+      debugPrint('DEBUG: [BackupRepo] Starting restore from cloud...');
+
+      // 1. Download from cloud
+      debugPrint('DEBUG: [BackupRepo] Step 1: Downloading from cloud...');
+      final encryptedBytes = await cloudService.downloadFromDrive();
+      debugPrint(
+        'DEBUG: [BackupRepo] Download successful. Size: ${encryptedBytes.length} bytes.',
+      );
+
+      // 2. Decrypt data
+      debugPrint('DEBUG: [BackupRepo] Step 2: Decrypting data...');
+      final decryptedBytes = await encryptionService.decrypt(encryptedBytes);
+      debugPrint(
+        'DEBUG: [BackupRepo] Decryption successful. Decrypted size: ${decryptedBytes.length} bytes.',
+      );
+
+      // 3. Restore to local Realm
+      debugPrint('DEBUG: [BackupRepo] Step 3: Restoring to local Realm...');
+      await localService.restoreLocalRealm(decryptedBytes);
+
+      // 4. Get cloud version info and save locally
+      debugPrint('DEBUG: [BackupRepo] Step 4: Syncing version info...');
+      final cloudInfo = await cloudService.getCloudBackupInfo();
+      if (cloudInfo != null) {
+        await localService.saveLocalBackupInfo(cloudInfo);
+      }
+
+      debugPrint('DEBUG: [BackupRepo] Restore completed successfully.');
+    } catch (e, stack) {
+      debugPrint('DEBUG: [BackupRepo] Restore operation failed: $e');
+      debugPrint('DEBUG: [BackupRepo] Stack trace: $stack');
+      throw Exception('Restore failed: $e');
+    }
+  }
+
+  @override
+  Future<bool> hasCloudBackup() async {
+    try {
+      return await cloudService.backupExists();
+    } catch (e) {
+      debugPrint('DEBUG: [BackupRepo] Error checking cloud backup: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<SyncStatus> getSyncStatus() async {
+    try {
+      debugPrint('DEBUG: [BackupRepo] Checking sync status...');
+
+      final localInfo = await localService.getLocalBackupInfo();
+      final cloudInfo = await cloudService.getCloudBackupInfo();
+
+      debugPrint(
+        'DEBUG: [BackupRepo] Local version: ${localInfo.version}, Cloud version: ${cloudInfo?.version ?? 'null'}',
+      );
+
+      if (cloudInfo == null) {
+        if (localInfo.version == 0) {
+          debugPrint('DEBUG: [BackupRepo] Sync status: noBackup');
+          return SyncStatus.noBackup;
+        }
+        debugPrint(
+          'DEBUG: [BackupRepo] Sync status: localAhead (no cloud backup)',
+        );
+        return SyncStatus.localAhead;
+      }
+
+      if (localInfo.version == cloudInfo.version) {
+        debugPrint('DEBUG: [BackupRepo] Sync status: inSync');
+        return SyncStatus.inSync;
+      } else if (localInfo.version > cloudInfo.version) {
+        debugPrint('DEBUG: [BackupRepo] Sync status: localAhead');
+        return SyncStatus.localAhead;
+      } else {
+        debugPrint('DEBUG: [BackupRepo] Sync status: cloudAhead');
+        return SyncStatus.cloudAhead;
+      }
+    } catch (e) {
+      debugPrint('DEBUG: [BackupRepo] Error getting sync status: $e');
+      return SyncStatus.unknown;
+    }
+  }
+
+  @override
+  Future<BackupInfo> getLocalBackupInfo() async {
+    return await localService.getLocalBackupInfo();
+  }
+
+  @override
+  Future<BackupInfo?> getCloudBackupInfo() async {
+    return await cloudService.getCloudBackupInfo();
+  }
+
+  @override
+  Future<void> notifyLocalChange() async {
+    debugPrint(
+      'DEBUG: [BackupRepo] Local change detected, incrementing version...',
+    );
+    await localService.incrementLocalVersion();
+  }
+}

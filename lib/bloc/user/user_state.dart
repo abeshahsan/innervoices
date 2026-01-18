@@ -12,9 +12,9 @@ final class UserLoading extends UserState {}
 // User is authenticated
 final class UserAuthenticated extends UserState {
   final UserModel user;
-  final firebase_auth.User firebaseUser;
+  final GoogleSignInAccount googleAccount;
 
-  UserAuthenticated(this.user, this.firebaseUser);
+  UserAuthenticated(this.user, this.googleAccount);
 }
 
 // User is not authenticated

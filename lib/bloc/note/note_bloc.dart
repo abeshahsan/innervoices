@@ -1,4 +1,6 @@
 import 'package:bloc/bloc.dart';
+import 'package:innervoices/bloc/backup/backup_bloc.dart';
+import 'package:innervoices/bloc/backup/backup_event.dart';
 import 'package:innervoices/data/repositories/note_repository.dart';
 import 'package:innervoices/models/note.dart';
 import 'package:meta/meta.dart';
@@ -8,9 +10,11 @@ part 'note_state.dart';
 
 class NoteBloc extends Bloc<NoteEvent, NoteState> {
   final NoteRepository noteRepository;
+  final BackupBloc backupBloc;
   final String userId;
 
-  NoteBloc(this.noteRepository, this.userId) : super(NoteInitial()) {
+  NoteBloc(this.noteRepository, this.userId, this.backupBloc)
+    : super(NoteInitial()) {
     on<NoteEvent>((event, emit) async {
       if (event is LoadNotes) {
         emit(NoteLoading());
@@ -23,6 +27,7 @@ class NoteBloc extends Bloc<NoteEvent, NoteState> {
       } else if (event is AddNote) {
         try {
           await noteRepository.addNote(event.note, userId);
+          backupBloc.add(NotifyLocalChange());
           add(LoadNotes());
         } catch (e) {
           emit(NoteError('Failed to add note: $e'));
@@ -30,6 +35,7 @@ class NoteBloc extends Bloc<NoteEvent, NoteState> {
       } else if (event is UpdateNote) {
         try {
           await noteRepository.updateNote(event.note);
+          backupBloc.add(NotifyLocalChange());
           add(LoadNotes());
         } catch (e) {
           emit(NoteError('Failed to update note: $e'));
@@ -37,6 +43,7 @@ class NoteBloc extends Bloc<NoteEvent, NoteState> {
       } else if (event is DeleteNote) {
         try {
           await noteRepository.deleteNote(event.noteId);
+          backupBloc.add(NotifyLocalChange());
           add(LoadNotes());
         } catch (e) {
           emit(NoteError('Failed to delete note: $e'));

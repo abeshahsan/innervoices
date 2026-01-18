@@ -14,7 +14,7 @@ class SignOutRequested extends UserEvent {}
 
 // Update user info
 class UserUpdated extends UserEvent {
-  final firebase_auth.User? firebaseUser;
+  final GoogleSignInAccount? googleAccount;
 
-  UserUpdated(this.firebaseUser);
+  UserUpdated(this.googleAccount);
 }

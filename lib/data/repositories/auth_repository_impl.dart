@@ -1,5 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:innervoices/data/services/google_auth_service.dart';
+import 'package:innervoices/models/user.dart';
 import 'auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -13,7 +14,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserCredential?> signInWithGoogle() {
+  Future<GoogleSignInAccount?> signInWithGoogle() {
     return _googleAuthService.signInWithGoogle();
   }
 
@@ -23,8 +24,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  User? get currentUser => _googleAuthService.currentUser;
+  GoogleSignInAccount? get currentUser => _googleAuthService.currentUser;
 
   @override
-  Stream<User?> authStateChanges() => _googleAuthService.authStateChanges;
+  UserModel? get currentUserModel => _googleAuthService.currentUserModel;
+
+  @override
+  Stream<GoogleSignInAccount?> authStateChanges() =>
+      _googleAuthService.authStateChanges;
 }
