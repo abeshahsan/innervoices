@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app_lock/flutter_app_lock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:innervoices/bloc/applock/applock_bloc.dart';
 import 'package:innervoices/bloc/backup/backup_bloc.dart';
 import 'package:innervoices/bloc/backup/backup_event.dart';
 import 'package:innervoices/bloc/note/note_bloc.dart';
+import 'package:innervoices/bloc/theme/theme_bloc.dart';
 import 'package:innervoices/bloc/user/user_bloc.dart';
 import 'package:innervoices/data/repositories/auth_repository_impl.dart';
 import 'package:innervoices/data/repositories/backup_repository_impl.dart';
@@ -16,6 +19,7 @@ import 'package:innervoices/data/services/backup_service/local_backup_service.da
 import 'package:innervoices/data/services/google_auth_service.dart';
 import 'package:innervoices/data/services/note_realm_service.dart';
 import 'package:innervoices/data/services/realm_manager.dart';
+import 'package:innervoices/theme/app_theme.dart';
 import 'package:innervoices/ui/screens/lock_screen.dart';
 import 'package:innervoices/ui/widgets/auth_gate.dart';
 import 'package:innervoices/ui/widgets/blur_on_background.dart';
@@ -80,33 +84,44 @@ class InnerVoicesApp extends StatelessWidget {
                 ..add(LoadNotes()),
         ),
         BlocProvider<ApplockBloc>(create: (context) => ApplockBloc()),
+        BlocProvider<ThemeBloc>(create: (context) => ThemeBloc()),
       ],
-      child: MaterialApp(
-        title: 'Inner Voices',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        home: AuthGate(),
-        builder: (context, child) => BlurOnBackground(
-          child: AppLock(
-            builder: (context, arg) => child!,
-            lockScreenBuilder: (context) {
-              return BlocConsumer<ApplockBloc, ApplockState>(
-                listener: (context, state) {
-                  if (state is ApplockUnlocked) {
-                    AppLock.of(context)?.didUnlock();
-                  }
+      child: BlocBuilder<ThemeBloc, ThemeState>(
+        builder: (context, themeState) {
+          return MaterialApp(
+            title: 'Inner Voices',
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: themeState.flutterThemeMode,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+              FlutterQuillLocalizations.delegate,
+            ],
+            supportedLocales: const [Locale('en', 'US')],
+            home: AuthGate(),
+            builder: (context, child) => BlurOnBackground(
+              child: AppLock(
+                builder: (context, arg) => child!,
+                lockScreenBuilder: (context) {
+                  return BlocConsumer<ApplockBloc, ApplockState>(
+                    listener: (context, state) {
+                      if (state is ApplockUnlocked) {
+                        AppLock.of(context)?.didUnlock();
+                      }
+                    },
+                    builder: (context, state) {
+                      return const LockScreen();
+                    },
+                  );
                 },
-                builder: (context, state) {
-                  return const LockScreen();
-                },
-              );
-            },
-            initiallyEnabled: true,
-            initialBackgroundLockLatency: Duration(seconds: 20),
-          ),
-        ),
+                initiallyEnabled: true,
+                initialBackgroundLockLatency: Duration(seconds: 20),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
