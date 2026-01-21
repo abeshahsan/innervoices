@@ -21,4 +21,7 @@ abstract class BackupRepository {
 
   /// Notifies that local data has changed
   Future<void> notifyLocalChange();
+
+  /// Deletes all backup files from the cloud
+  Future<void> deleteCloudBackup();
 }

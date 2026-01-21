@@ -19,13 +19,16 @@ class BackupRepositoryImpl implements BackupRepository {
   @override
   Future<void> backupToCloud() async {
     try {
-      debugPrint('DEBUG: [BackupRepo] Starting backup to cloud...');
+      debugPrint('DEBUG: [BackupRepo] ========== STARTING BACKUP ==========');
 
       // 1. Export local Realm
       debugPrint('DEBUG: [BackupRepo] Step 1: Exporting local Realm...');
       final bytes = await localService.exportLocalRealm();
       debugPrint(
-        'DEBUG: [BackupRepo] Export successful. Size: ${bytes.length} bytes.',
+        'DEBUG: [BackupRepo] Export successful. Raw Realm size: ${bytes.length} bytes.',
+      );
+      debugPrint(
+        'DEBUG: [BackupRepo] Raw Realm first 20 bytes: ${bytes.take(20).toList()}',
       );
 
       // 2. Encrypt data
@@ -34,11 +37,15 @@ class BackupRepositoryImpl implements BackupRepository {
       debugPrint(
         'DEBUG: [BackupRepo] Encryption successful. Encrypted size: ${encryptedBytes.length} bytes.',
       );
+      debugPrint(
+        'DEBUG: [BackupRepo] Encrypted first 20 bytes: ${encryptedBytes.take(20).toList()}',
+      );
 
       // 3. Get current local version and increment
       debugPrint('DEBUG: [BackupRepo] Step 3: Getting backup info...');
       final localInfo = await localService.getLocalBackupInfo();
       final newInfo = localInfo.increment();
+      debugPrint('DEBUG: [BackupRepo] New backup version: ${newInfo.version}');
 
       // 4. Upload to cloud with version info
       debugPrint('DEBUG: [BackupRepo] Step 4: Uploading to cloud...');
@@ -49,10 +56,11 @@ class BackupRepositoryImpl implements BackupRepository {
       await localService.saveLocalBackupInfo(newInfo);
 
       debugPrint(
-        'DEBUG: [BackupRepo] Backup completed successfully. Version: ${newInfo.version}',
+        'DEBUG: [BackupRepo] ========== BACKUP COMPLETED. Version: ${newInfo.version} ==========',
       );
     } catch (e, stack) {
-      debugPrint('DEBUG: [BackupRepo] Backup operation failed: $e');
+      debugPrint('DEBUG: [BackupRepo] ========== BACKUP FAILED ==========');
+      debugPrint('DEBUG: [BackupRepo] Error: $e');
       debugPrint('DEBUG: [BackupRepo] Stack trace: $stack');
       throw Exception('Backup failed: $e');
     }
@@ -61,20 +69,26 @@ class BackupRepositoryImpl implements BackupRepository {
   @override
   Future<void> restoreFromCloud() async {
     try {
-      debugPrint('DEBUG: [BackupRepo] Starting restore from cloud...');
+      debugPrint('DEBUG: [BackupRepo] ========== STARTING RESTORE ==========');
 
       // 1. Download from cloud
       debugPrint('DEBUG: [BackupRepo] Step 1: Downloading from cloud...');
       final encryptedBytes = await cloudService.downloadFromDrive();
       debugPrint(
-        'DEBUG: [BackupRepo] Download successful. Size: ${encryptedBytes.length} bytes.',
+        'DEBUG: [BackupRepo] Download successful. Encrypted size: ${encryptedBytes.length} bytes.',
+      );
+      debugPrint(
+        'DEBUG: [BackupRepo] Encrypted first 20 bytes: ${encryptedBytes.take(20).toList()}',
       );
 
       // 2. Decrypt data
       debugPrint('DEBUG: [BackupRepo] Step 2: Decrypting data...');
       final decryptedBytes = await encryptionService.decrypt(encryptedBytes);
       debugPrint(
-        'DEBUG: [BackupRepo] Decryption successful. Decrypted size: ${decryptedBytes.length} bytes.',
+        'DEBUG: [BackupRepo] Decryption successful. Decrypted (raw Realm) size: ${decryptedBytes.length} bytes.',
+      );
+      debugPrint(
+        'DEBUG: [BackupRepo] Decrypted first 20 bytes: ${decryptedBytes.take(20).toList()}',
       );
 
       // 3. Restore to local Realm
@@ -84,13 +98,16 @@ class BackupRepositoryImpl implements BackupRepository {
       // 4. Get cloud version info and save locally
       debugPrint('DEBUG: [BackupRepo] Step 4: Syncing version info...');
       final cloudInfo = await cloudService.getCloudBackupInfo();
+      debugPrint('DEBUG: [BackupRepo] Cloud backup info: $cloudInfo');
       if (cloudInfo != null) {
         await localService.saveLocalBackupInfo(cloudInfo);
+        debugPrint('DEBUG: [BackupRepo] Saved cloud info to local.');
       }
 
-      debugPrint('DEBUG: [BackupRepo] Restore completed successfully.');
+      debugPrint('DEBUG: [BackupRepo] ========== RESTORE COMPLETED ==========');
     } catch (e, stack) {
-      debugPrint('DEBUG: [BackupRepo] Restore operation failed: $e');
+      debugPrint('DEBUG: [BackupRepo] ========== RESTORE FAILED ==========');
+      debugPrint('DEBUG: [BackupRepo] Error: $e');
       debugPrint('DEBUG: [BackupRepo] Stack trace: $stack');
       throw Exception('Restore failed: $e');
     }
@@ -161,5 +178,18 @@ class BackupRepositoryImpl implements BackupRepository {
       'DEBUG: [BackupRepo] Local change detected, incrementing version...',
     );
     await localService.incrementLocalVersion();
+  }
+
+  @override
+  Future<void> deleteCloudBackup() async {
+    try {
+      debugPrint('DEBUG: [BackupRepo] Deleting cloud backup...');
+      await cloudService.deleteCloudBackup();
+      debugPrint('DEBUG: [BackupRepo] Cloud backup deleted successfully.');
+    } catch (e, stack) {
+      debugPrint('DEBUG: [BackupRepo] Failed to delete cloud backup: $e');
+      debugPrint('DEBUG: [BackupRepo] Stack trace: $stack');
+      throw Exception('Failed to delete cloud backup: $e');
+    }
   }
 }

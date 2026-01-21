@@ -26,3 +26,8 @@ class TriggerRestore extends BackupEvent {
 class NotifyLocalChange extends BackupEvent {
   const NotifyLocalChange();
 }
+
+/// Delete all cloud backup files
+class DeleteCloudBackup extends BackupEvent {
+  const DeleteCloudBackup();
+}

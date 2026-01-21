@@ -10,6 +10,7 @@ class BackupState extends Equatable {
   final BackupInfo? cloudInfo;
   final DateTime? lastSyncedAt;
   final String? errorMessage;
+  final bool requiresRestart; // Set to true after successful restore
 
   const BackupState({
     this.status = BackupStatus.initial,
@@ -18,6 +19,7 @@ class BackupState extends Equatable {
     this.cloudInfo,
     this.lastSyncedAt,
     this.errorMessage,
+    this.requiresRestart = false,
   });
 
   // Helper for initial state with proper default
@@ -31,6 +33,7 @@ class BackupState extends Equatable {
     DateTime? lastSyncedAt,
     String? errorMessage,
     bool clearError = false,
+    bool? requiresRestart,
   }) {
     return BackupState(
       status: status ?? this.status,
@@ -39,6 +42,7 @@ class BackupState extends Equatable {
       cloudInfo: cloudInfo ?? this.cloudInfo,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      requiresRestart: requiresRestart ?? this.requiresRestart,
     );
   }
 
@@ -66,5 +70,6 @@ class BackupState extends Equatable {
     cloudInfo,
     lastSyncedAt,
     errorMessage,
+    requiresRestart,
   ];
 }

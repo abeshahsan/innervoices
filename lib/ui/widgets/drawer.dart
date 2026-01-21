@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_app_lock/flutter_app_lock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:innervoices/bloc/backup/backup_bloc.dart';
@@ -151,12 +152,17 @@ class _HomeDrawerState extends State<HomeDrawer> {
     return BlocConsumer<BackupBloc, BackupState>(
       listener: (context, state) {
         if (state.status == BackupStatus.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Backup successful!'),
-              duration: Duration(seconds: 3),
-            ),
-          );
+          if (state.requiresRestart) {
+            // Show restart dialog after successful restore
+            _showRestartRequiredDialog(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Backup successful!'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
         } else if (state.status == BackupStatus.failure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -341,6 +347,29 @@ class _HomeDrawerState extends State<HomeDrawer> {
               context.read<BackupBloc>().add(TriggerRestore());
             },
             child: const Text('Restore', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRestartRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Restore Complete'),
+        content: const Text(
+          'Your data has been restored successfully. The app needs to restart to load the restored data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              // Exit the app - user will need to reopen it
+              SystemNavigator.pop();
+            },
+            child: const Text('Restart Now'),
           ),
         ],
       ),

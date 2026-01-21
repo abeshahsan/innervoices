@@ -1,17 +1,16 @@
 import 'dart:convert';
-import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
-import 'package:innervoices/models/backup_info.dart';
 import 'package:innervoices/data/services/google_auth_service.dart';
+import 'package:innervoices/models/backup_info.dart';
 
 class GoogleDriveBackupService {
   final GoogleSignIn googleSignIn;
   static const String _backupFileName = 'inner_voices_backup.enc';
   static const String _metadataFileName = 'inner_voices_backup_meta.json';
-  static const String _appFolderName = 'InnerVoicesBackup';
 
   GoogleDriveBackupService({required this.googleSignIn});
 
@@ -41,63 +40,41 @@ class GoogleDriveBackupService {
     }
   }
 
-  /// Gets or creates the app folder for backups
-  Future<String?> _getOrCreateAppFolder(drive.DriveApi driveApi) async {
-    try {
-      // Search for existing folder
-      final query =
-          "name = '$_appFolderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
-      final fileList = await driveApi.files.list(q: query, spaces: 'drive');
-
-      if (fileList.files != null && fileList.files!.isNotEmpty) {
-        debugPrint(
-          'DEBUG: [GoogleDriveBackupService] Found existing app folder: ${fileList.files!.first.id}',
-        );
-        return fileList.files!.first.id;
-      }
-
-      // Create new folder
-      final folder = drive.File()
-        ..name = _appFolderName
-        ..mimeType = 'application/vnd.google-apps.folder';
-
-      final created = await driveApi.files.create(folder);
-      debugPrint(
-        'DEBUG: [GoogleDriveBackupService] Created new app folder: ${created.id}',
-      );
-      return created.id;
-    } catch (e) {
-      debugPrint(
-        'DEBUG: [GoogleDriveBackupService] Error getting/creating app folder: $e',
-      );
-      return null;
-    }
-  }
-
-  /// Uploads data to Google Drive with version info
+  /// Uploads data to Google Drive App Data folder (hidden from user)
+  /// This uses the 'appDataFolder' special folder that is:
+  /// - Hidden from the user in Drive UI
+  /// - Not visible in recent files or shortcuts
+  /// - Only accessible by this app
   Future<void> uploadToDrive(Uint8List data, BackupInfo backupInfo) async {
     try {
       debugPrint(
-        'DEBUG: [GoogleDriveBackupService] Starting upload to Google Drive...',
+        'DEBUG: [GoogleDriveBackupService] Starting upload to Google Drive appDataFolder...',
       );
       debugPrint(
         'DEBUG: [GoogleDriveBackupService] Backup version: ${backupInfo.version}',
       );
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Data size to upload: ${data.length} bytes',
+      );
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] First 20 bytes: ${data.take(20).toList()}',
+      );
 
       final driveApi = await _getDriveApi();
-      if (driveApi == null)
+      if (driveApi == null) {
         throw Exception('Failed to get Drive API - user may not be signed in');
+      }
 
-      final folderId = await _getOrCreateAppFolder(driveApi);
-      if (folderId == null) throw Exception('Failed to get/create app folder');
+      // Upload backup file to appDataFolder
+      await _uploadFile(driveApi, _backupFileName, data);
 
-      // Upload backup file
-      await _uploadFile(driveApi, folderId, _backupFileName, data);
-
-      // Upload metadata file
+      // Upload metadata file to appDataFolder
       final metadataJson = jsonEncode(backupInfo.toJson());
       final metadataBytes = Uint8List.fromList(utf8.encode(metadataJson));
-      await _uploadFile(driveApi, folderId, _metadataFileName, metadataBytes);
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Metadata JSON: $metadataJson',
+      );
+      await _uploadFile(driveApi, _metadataFileName, metadataBytes);
 
       debugPrint(
         'DEBUG: [GoogleDriveBackupService] Upload completed successfully.',
@@ -110,17 +87,15 @@ class GoogleDriveBackupService {
 
   Future<void> _uploadFile(
     drive.DriveApi driveApi,
-    String folderId,
     String fileName,
     Uint8List data,
   ) async {
-    final query =
-        "name = '$fileName' and '$folderId' in parents and trashed = false";
-    final fileList = await driveApi.files.list(q: query, spaces: 'drive');
-
-    final driveFile = drive.File()
-      ..name = fileName
-      ..parents = [folderId];
+    // Search in appDataFolder space
+    final query = "name = '$fileName'";
+    final fileList = await driveApi.files.list(
+      q: query,
+      spaces: 'appDataFolder',
+    );
 
     final media = drive.Media(Stream.value(data), data.length);
 
@@ -129,7 +104,6 @@ class GoogleDriveBackupService {
       debugPrint(
         'DEBUG: [GoogleDriveBackupService] Updating existing file: $fileName ($existingFileId)',
       );
-      // Don't set parents on update
       final updateFile = drive.File()..name = fileName;
       await driveApi.files.update(
         updateFile,
@@ -138,32 +112,49 @@ class GoogleDriveBackupService {
       );
     } else {
       debugPrint(
-        'DEBUG: [GoogleDriveBackupService] Creating new file: $fileName',
+        'DEBUG: [GoogleDriveBackupService] Creating new file in appDataFolder: $fileName',
       );
+      // Create file in appDataFolder (hidden from user)
+      final driveFile = drive.File()
+        ..name = fileName
+        ..parents = ['appDataFolder'];
       await driveApi.files.create(driveFile, uploadMedia: media);
     }
   }
 
-  /// Downloads data from Google Drive
+  /// Downloads data from Google Drive appDataFolder
   Future<Uint8List> downloadFromDrive() async {
     try {
       debugPrint(
-        'DEBUG: [GoogleDriveBackupService] Starting download from Google Drive...',
+        'DEBUG: [GoogleDriveBackupService] Starting download from Google Drive appDataFolder...',
       );
       final driveApi = await _getDriveApi();
-      if (driveApi == null)
+      if (driveApi == null) {
         throw Exception('Failed to get Drive API - user may not be signed in');
+      }
 
-      final folderId = await _getOrCreateAppFolder(driveApi);
-      if (folderId == null) throw Exception('Failed to get app folder');
+      // Search in appDataFolder space
+      final query = "name = '$_backupFileName'";
+      debugPrint('DEBUG: [GoogleDriveBackupService] Search query: $query');
+      final fileList = await driveApi.files.list(
+        q: query,
+        spaces: 'appDataFolder',
+      );
 
-      final query =
-          "name = '$_backupFileName' and '$folderId' in parents and trashed = false";
-      final fileList = await driveApi.files.list(q: query, spaces: 'drive');
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Files found: ${fileList.files?.length ?? 0}',
+      );
+      if (fileList.files != null) {
+        for (var file in fileList.files!) {
+          debugPrint(
+            'DEBUG: [GoogleDriveBackupService]   - File: ${file.name} (id: ${file.id})',
+          );
+        }
+      }
 
       if (fileList.files == null || fileList.files!.isEmpty) {
         debugPrint(
-          'DEBUG: [GoogleDriveBackupService] No backup found on Google Drive.',
+          'DEBUG: [GoogleDriveBackupService] No backup found in appDataFolder.',
         );
         throw Exception('No backup found. Please perform a backup first.');
       }
@@ -183,10 +174,14 @@ class GoogleDriveBackupService {
         dataList.addAll(data);
       }
 
+      final result = Uint8List.fromList(dataList);
       debugPrint(
-        'DEBUG: [GoogleDriveBackupService] Download completed. Received ${dataList.length} bytes.',
+        'DEBUG: [GoogleDriveBackupService] Download completed. Received ${result.length} bytes.',
       );
-      return Uint8List.fromList(dataList);
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] First 20 bytes: ${result.take(20).toList()}',
+      );
+      return result;
     } catch (e) {
       debugPrint('DEBUG: [GoogleDriveBackupService] Error during download: $e');
       throw Exception('Download failed: $e');
@@ -197,21 +192,21 @@ class GoogleDriveBackupService {
   Future<BackupInfo?> getCloudBackupInfo() async {
     try {
       debugPrint(
-        'DEBUG: [GoogleDriveBackupService] Fetching cloud backup info...',
+        'DEBUG: [GoogleDriveBackupService] Fetching cloud backup info from appDataFolder...',
       );
       final driveApi = await _getDriveApi();
       if (driveApi == null) return null;
 
-      final folderId = await _getOrCreateAppFolder(driveApi);
-      if (folderId == null) return null;
-
-      final query =
-          "name = '$_metadataFileName' and '$folderId' in parents and trashed = false";
-      final fileList = await driveApi.files.list(q: query, spaces: 'drive');
+      // Search in appDataFolder space
+      final query = "name = '$_metadataFileName'";
+      final fileList = await driveApi.files.list(
+        q: query,
+        spaces: 'appDataFolder',
+      );
 
       if (fileList.files == null || fileList.files!.isEmpty) {
         debugPrint(
-          'DEBUG: [GoogleDriveBackupService] No backup metadata found.',
+          'DEBUG: [GoogleDriveBackupService] No backup metadata found in appDataFolder.',
         );
         return null;
       }
@@ -243,27 +238,79 @@ class GoogleDriveBackupService {
     }
   }
 
-  /// Checks if a backup exists on Google Drive
+  /// Checks if a backup exists on Google Drive appDataFolder
   Future<bool> backupExists() async {
     try {
       final driveApi = await _getDriveApi();
       if (driveApi == null) return false;
 
-      final folderId = await _getOrCreateAppFolder(driveApi);
-      if (folderId == null) return false;
-
-      final query =
-          "name = '$_backupFileName' and '$folderId' in parents and trashed = false";
-      final fileList = await driveApi.files.list(q: query, spaces: 'drive');
+      // Search in appDataFolder space
+      final query = "name = '$_backupFileName'";
+      final fileList = await driveApi.files.list(
+        q: query,
+        spaces: 'appDataFolder',
+      );
 
       final exists = fileList.files != null && fileList.files!.isNotEmpty;
-      debugPrint('DEBUG: [GoogleDriveBackupService] Backup exists: $exists');
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Backup exists in appDataFolder: $exists',
+      );
       return exists;
     } catch (e) {
       debugPrint(
         'DEBUG: [GoogleDriveBackupService] Error checking backup existence: $e',
       );
       return false;
+    }
+  }
+
+  /// Deletes all backup files from Google Drive appDataFolder.
+  /// This includes the encrypted backup file and metadata file.
+  Future<void> deleteCloudBackup() async {
+    try {
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Deleting cloud backup from appDataFolder...',
+      );
+      final driveApi = await _getDriveApi();
+      if (driveApi == null) {
+        throw Exception('Failed to get Drive API - user may not be signed in');
+      }
+
+      // Delete backup file from appDataFolder
+      await _deleteFile(driveApi, _backupFileName);
+
+      // Delete metadata file from appDataFolder
+      await _deleteFile(driveApi, _metadataFileName);
+
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Cloud backup deleted successfully.',
+      );
+    } catch (e) {
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Error deleting cloud backup: $e',
+      );
+      throw Exception('Failed to delete cloud backup: $e');
+    }
+  }
+
+  Future<void> _deleteFile(drive.DriveApi driveApi, String fileName) async {
+    // Search in appDataFolder space
+    final query = "name = '$fileName'";
+    final fileList = await driveApi.files.list(
+      q: query,
+      spaces: 'appDataFolder',
+    );
+
+    if (fileList.files != null && fileList.files!.isNotEmpty) {
+      final fileId = fileList.files!.first.id!;
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] Deleting file: $fileName ($fileId)',
+      );
+      await driveApi.files.delete(fileId);
+    } else {
+      debugPrint(
+        'DEBUG: [GoogleDriveBackupService] File not found in appDataFolder: $fileName',
+      );
     }
   }
 }

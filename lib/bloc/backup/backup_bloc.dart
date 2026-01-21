@@ -13,6 +13,7 @@ class BackupBloc extends Bloc<BackupEvent, BackupState> {
     on<TriggerBackup>(_onTriggerBackup);
     on<TriggerRestore>(_onTriggerRestore);
     on<NotifyLocalChange>(_onNotifyLocalChange);
+    on<DeleteCloudBackup>(_onDeleteCloudBackup);
   }
 
   Future<void> _onCheckSyncStatus(
@@ -100,8 +101,12 @@ class BackupBloc extends Bloc<BackupEvent, BackupState> {
       final localInfo = await backupRepository.getLocalBackupInfo();
       final cloudInfo = await backupRepository.getCloudBackupInfo();
 
-      debugPrint('DEBUG: [BackupBloc] Restore successful.');
+      debugPrint(
+        'DEBUG: [BackupBloc] Restore successful. App restart required.',
+      );
 
+      // After successful restore, signal that app needs to restart
+      // to reinitialize all services with the restored data
       emit(
         state.copyWith(
           status: BackupStatus.success,
@@ -109,6 +114,7 @@ class BackupBloc extends Bloc<BackupEvent, BackupState> {
           localInfo: localInfo,
           cloudInfo: cloudInfo,
           lastSyncedAt: DateTime.now(),
+          requiresRestart: true, // Signal that app should restart
         ),
       );
     } catch (e, stack) {
@@ -141,6 +147,39 @@ class BackupBloc extends Bloc<BackupEvent, BackupState> {
       emit(state.copyWith(localInfo: localInfo, syncStatus: syncStatus));
     } catch (e) {
       debugPrint('DEBUG: [BackupBloc] Error notifying local change: $e');
+    }
+  }
+
+  Future<void> _onDeleteCloudBackup(
+    DeleteCloudBackup event,
+    Emitter<BackupState> emit,
+  ) async {
+    debugPrint('DEBUG: [BackupBloc] Deleting cloud backup...');
+    emit(state.copyWith(status: BackupStatus.loading, clearError: true));
+
+    try {
+      await backupRepository.deleteCloudBackup();
+
+      final syncStatus = await backupRepository.getSyncStatus();
+
+      debugPrint('DEBUG: [BackupBloc] Cloud backup deleted successfully.');
+
+      emit(
+        state.copyWith(
+          status: BackupStatus.success,
+          syncStatus: syncStatus,
+          cloudInfo: null,
+        ),
+      );
+    } catch (e, stack) {
+      debugPrint('DEBUG: [BackupBloc] Delete failed: $e');
+      debugPrint('DEBUG: [BackupBloc] Stack: $stack');
+      emit(
+        state.copyWith(
+          status: BackupStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 }

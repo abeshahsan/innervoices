@@ -149,6 +149,7 @@ class GoogleAuthService {
 
   /// Get authorization for Drive API access
   /// This will prompt the user if scopes haven't been granted yet
+  /// Uses drive.appdata scope for hidden app-specific storage
   Future<GoogleSignInClientAuthorization?> getDriveAuthorization() async {
     final account = currentUser;
     if (account == null) {
@@ -160,14 +161,19 @@ class GoogleAuthService {
 
     try {
       debugPrint(
-        'DEBUG: [GoogleAuthService] Requesting Drive authorization...',
+        'DEBUG: [GoogleAuthService] Requesting Drive appdata authorization...',
       );
+
+      // Use drive.appdata scope for hidden app-specific storage
+      // This creates files that are:
+      // - Hidden from the user in Drive UI
+      // - Not visible in recent files or shortcuts
+      // - Only accessible by this app
+      const driveAppDataScope = 'https://www.googleapis.com/auth/drive.appdata';
 
       // First try to get existing authorization
       var authorization = await account.authorizationClient
-          .authorizationForScopes([
-            'https://www.googleapis.com/auth/drive.file',
-          ]);
+          .authorizationForScopes([driveAppDataScope]);
 
       // If no existing authorization, request it (this prompts the user)
       if (authorization == null) {
@@ -175,11 +181,13 @@ class GoogleAuthService {
           'DEBUG: [GoogleAuthService] No existing authorization, requesting...',
         );
         authorization = await account.authorizationClient.authorizeScopes([
-          'https://www.googleapis.com/auth/drive.file',
+          driveAppDataScope,
         ]);
       }
 
-      debugPrint('DEBUG: [GoogleAuthService] Drive authorization obtained.');
+      debugPrint(
+        'DEBUG: [GoogleAuthService] Drive appdata authorization obtained.',
+      );
       return authorization;
     } catch (e) {
       debugPrint('DEBUG: [GoogleAuthService] Drive authorization failed: $e');

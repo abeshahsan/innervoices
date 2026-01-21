@@ -1,25 +1,24 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pointycastle/export.dart';
 
 class BackupEncryptionService {
-  static const _keyName = 'inner_voices_backup_key';
-  final _storage = const FlutterSecureStorage();
-
-  Future<Uint8List> _getOrCreateKey() async {
-    final existing = await _storage.read(key: _keyName);
-    if (existing != null) {
-      return base64Decode(existing);
+  /// Gets the encryption key from environment variables.
+  /// This key is consistent across all app installations.
+  Uint8List _getKey() {
+    final base64Key = dotenv.env['BACKUP_ENCRYPTION_KEY'];
+    if (base64Key == null || base64Key.isEmpty) {
+      throw Exception(
+        'BACKUP_ENCRYPTION_KEY not found in .env file. '
+        'Please ensure the .env file exists and contains the key.',
+      );
     }
-
-    final key = _secureRandomBytes(32); // 256-bit
-    await _storage.write(key: _keyName, value: base64Encode(key));
-    return key;
+    return base64Decode(base64Key);
   }
 
   Future<Uint8List> encrypt(Uint8List data) async {
-    final key = await _getOrCreateKey();
+    final key = _getKey();
     final iv = _secureRandomBytes(12);
 
     final cipher = GCMBlockCipher(AESEngine())
@@ -30,7 +29,7 @@ class BackupEncryptionService {
   }
 
   Future<Uint8List> decrypt(Uint8List encryptedData) async {
-    final key = await _getOrCreateKey();
+    final key = _getKey();
     final iv = encryptedData.sublist(0, 12);
     final cipherText = encryptedData.sublist(12);
 

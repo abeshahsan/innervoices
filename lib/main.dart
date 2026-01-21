@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app_lock/flutter_app_lock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:innervoices/bloc/applock/applock_bloc.dart';
 import 'package:innervoices/bloc/backup/backup_bloc.dart';
 import 'package:innervoices/bloc/backup/backup_event.dart';
@@ -21,6 +22,9 @@ import 'package:innervoices/ui/widgets/blur_on_background.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
 
   // Initialize Google Auth Service
   await GoogleAuthService.instance.initialize();
