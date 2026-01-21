@@ -18,7 +18,7 @@ class GoogleAuthService {
   final _authStateController =
       StreamController<GoogleSignInAccount?>.broadcast();
 
-  /// Initialize Google Sign In
+  /// Initialize Google Sign In and attempt to restore previous session
   Future<void> initialize() async {
     if (_isInitialized) return;
 
@@ -49,9 +49,37 @@ class GoogleAuthService {
 
       _isInitialized = true;
       debugPrint('DEBUG: [GoogleAuthService] Initialization complete.');
+
+      // Attempt silent sign-in to restore previous session
+      await _attemptSilentSignIn();
     } catch (e) {
       debugPrint('DEBUG: [GoogleAuthService] Initialization failed: $e');
       throw Exception('Failed to initialize Google Sign In: $e');
+    }
+  }
+
+  /// Attempt to restore a previously signed-in user without prompting
+  Future<void> _attemptSilentSignIn() async {
+    try {
+      debugPrint('DEBUG: [GoogleAuthService] Attempting silent sign in...');
+
+      // Try lightweight authentication first - this won't show any UI
+      final account = await _googleSignIn.attemptLightweightAuthentication();
+
+      if (account != null) {
+        debugPrint(
+          'DEBUG: [GoogleAuthService] Silent sign in successful: ${account.email}',
+        );
+        _currentUser = account;
+        _authStateController.add(account);
+      } else {
+        debugPrint(
+          'DEBUG: [GoogleAuthService] No previous session to restore.',
+        );
+      }
+    } catch (e) {
+      debugPrint('DEBUG: [GoogleAuthService] Silent sign in failed: $e');
+      // Silent sign-in failure is not critical, user can sign in manually
     }
   }
 
